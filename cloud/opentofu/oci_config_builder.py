@@ -29,6 +29,7 @@ class OCIConfigBuilder(BaseConfigBuilder):
         self.resources_tf['data']['oci_identity_availability_domains'] = {}
         self.resources_tf['resource']['oci_core_vcn'] = {}
         self.resources_tf['resource']['oci_core_internet_gateway'] = {}
+        self.resources_tf['resource']['oci_core_security_list'] = {}
         self.resources_tf['resource']['oci_core_default_route_table'] = {}
         self.resources_tf['resource']['oci_core_subnet'] = {}
         self.resources_tf['resource']['oci_core_instance'] = {}
@@ -69,6 +70,28 @@ class OCIConfigBuilder(BaseConfigBuilder):
         else:
             vcn_name = self.__get_tf_resource_name_by_region('oci_core_vcn', region)
         instance['vcn'] = vcn_name
+
+        # Security list with SSH ingress (one per region)
+        sl_name = self.create_resource_name([region, 'sl'])
+        if not self.__get_tf_resource_name_by_region('oci_core_security_list', region):
+            declared_vcn_id = f'oci_core_vcn.{vcn_name}.id'
+            self.resources_tf['resource']['oci_core_security_list'][sl_name] = {
+                'provider': f'oci.{region}',
+                'compartment_id': compartment_id,
+                'vcn_id': f'${{{declared_vcn_id}}}',
+                'display_name': sl_name,
+                'ingress_security_rules': [{
+                    'protocol': '6',
+                    'source': '0.0.0.0/0',
+                    'tcp_options': {
+                        'min': 22,
+                        'max': 22,
+                    },
+                }],
+            }
+        else:
+            sl_name = self.__get_tf_resource_name_by_region('oci_core_security_list', region)
+        instance['sl'] = sl_name
 
         # Internet Gateway (one per region)
         ig_name = self.create_resource_name([region, 'ig'])
@@ -115,6 +138,7 @@ class OCIConfigBuilder(BaseConfigBuilder):
                 'display_name': subnet_name,
                 'dns_label': 'civsubnet',
                 'route_table_id': f'${{{declared_default_rt_id}}}',
+                'security_list_ids': [f'${{oci_core_security_list.{instance["sl"]}.id}}'],
             }
         else:
             subnet_name = self.__get_tf_resource_name_by_region('oci_core_subnet', region)
