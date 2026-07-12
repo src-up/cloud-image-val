@@ -1,0 +1,40 @@
+# This is ONLY a template for provision azure resources. 
+# Please copy it to other place that you want to edit
+# Not recommend you edit it directly in case leaking sensitive information.
+Cloud:
+    provider: azure
+# Must required for azure access
+Credential:
+    tenant_id: xxxxxxxxx
+    username: xxxxxxxxx
+    password: xxxxxxxxx
+# Subscription is only required for rhsm access
+Subscription:
+    username:
+    password:
+VM:
+    # create vm with name format vm_name_prefix + vm_size
+    rhel_ver: 'x.y'
+    vm_name_prefix: os_tests_azure
+    vm_size: Standard_DS1_v2
+    vm_image: RHEL75.vhd
+    vm_username: azureuser
+    vm_password: ABCD11@abcde
+    generate_ssh_keys: True
+    # pub key used to import to target system
+    ssh_key_value: /home/xiliang/.ssh/id_rsa.pub
+    use_unmanaged_disk: True
+    custom_data: 
+    resource_group: 'xxxxxx'
+    storage_account: 'xxxxxx'
+    region: 'eastus'
+    sriov: 'false'
+    #net_bandwidth 10, means 10G
+    net_bandwidth: 10
+    cvm: 'false'
+    # For Mdsv3-series can use disk_controller_type to specify SCSI/NVME disk type
+    disk_controller_type: 'false'
+    data_disk_sizes_gb: '10 20 30 40'
+kdump_nfs_server: 
+Other:
+    packages: <the cloud-init package name: cloud-init-xxx.rpm>

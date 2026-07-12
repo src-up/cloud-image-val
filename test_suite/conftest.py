@@ -8,6 +8,7 @@ from packaging import version
 from py.xml import html
 from pytest_html import extras
 from requests.adapters import HTTPAdapter
+from lib.vm_lifecycle import factory as vm_lifecycle_factory
 from requests.packages.urllib3.util.retry import Retry
 
 from test_suite.generic import helpers
@@ -174,6 +175,36 @@ def instance_data(host):
     return helpers.__get_instance_data_from_json(
         key_to_find='address', values_to_find=values_to_find, path=helpers.INSTANCES_JSON_PATH
     )
+
+
+@pytest.fixture(scope='module')
+def vm_control(instance_data):
+    """Returns a VM lifecycle controller for the current instance."""
+    return vm_lifecycle_factory.get(instance_data)
+
+
+@pytest.fixture
+def oci_only(instance_data):
+    if instance_data['cloud'] != 'oci':
+        pytest.skip('OCI only')
+
+
+@pytest.fixture
+def aws_only(instance_data):
+    if instance_data['cloud'] != 'aws':
+        pytest.skip('AWS only')
+
+
+@pytest.fixture
+def azure_only(instance_data):
+    if instance_data['cloud'] != 'azure':
+        pytest.skip('Azure only')
+
+
+@pytest.fixture
+def gcloud_only(instance_data):
+    if instance_data['cloud'] != 'gcloud':
+        pytest.skip('GCloud only')
 
 
 @pytest.fixture(autouse=True)

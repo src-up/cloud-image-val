@@ -175,17 +175,24 @@ class OpenTofuController:
 
             public_ip = values.get('public_ip')
 
+            availability_domain = values['availability_domain']
+            # availability_domain format: "<hash>:REGION-AD-N" e.g. "gzqB:US-CHICAGO-1-AD-1"
+            ad_region_part = availability_domain.split(':')[-1]  # "US-CHICAGO-1-AD-1"
+            region = '-'.join(ad_region_part.split('-')[:-2]).lower()  # "us-chicago-1"
+
             instance_data = {
                 'cloud': 'oci',
                 'name': resource['name'],
                 'instance_id': values['id'],
+                'compartment_id': values.get('compartment_id', ''),
                 'public_ip': public_ip,
                 'public_dns': public_ip,  # OCI has no public DNS, use IP
                 'private_ip': values.get('private_ip', ''),
-                'availability_domain': values['availability_domain'],
+                'availability_domain': availability_domain,
                 'shape': values['shape'],
                 'image': values['source_details'][0]['source_id'],
                 'username': self.tf_configurator.get_oci_username_by_instance_name(resource['name']),
+                'region': region,
             }
 
             self._set_instance_default_address(instance_data)

@@ -102,6 +102,9 @@ class SuiteRunner:
         elif self.cloud_provider == 'azure':
             test_suites_to_run.append('cloud/test_azure.py')
 
+        # os-tests ported suites
+        test_suites_to_run.append('vm_lifecycle/test_lifecycle_civ.py')
+
         return [os.path.join(os.path.dirname(__file__), p) for p in test_suites_to_run]
 
     def get_all_instances_hosts_with_users(self):

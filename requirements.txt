@@ -15,3 +15,5 @@ py==1.11.0
 paramiko==3.4.1
 requests==2.32.3
 packaging==24.1
+tipset>=0.2.0
+oci

@@ -1,6 +1,7 @@
 import os
 import time
 import sshconf
+import paramiko
 
 from threading import Thread
 
@@ -89,6 +90,59 @@ def wait_for_host_ssh_up(host_address, timeout_seconds):
     )
     print("AWS: Check if this account has the appropiate inbound rules for this region")
     exit(1)
+
+
+# Ported from os-tests: unlike wait_for_host_ssh_up (ssh-keyscan, port-open only),
+# this does a real paramiko handshake so it only returns when sshd is fully ready.
+def _wait_for_ssh_up(host_address, timeout_seconds=120):
+    """
+    Wait for SSH to accept full connections. Use this when SSH is guaranteed to
+    already be down (e.g. after OCI API reboot/start confirmed via state machine).
+    """
+    start_time = time.time()
+    while time.time() < start_time + timeout_seconds:
+        try:
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(hostname=host_address, port=22, timeout=10, banner_timeout=30)
+            client.close()
+            print(f"{host_address} SSH is up ({time.time() - start_time:.1f}s)")
+            return
+        except paramiko.AuthenticationException:
+            # TCP + SSH handshake succeeded — daemon is fully up
+            print(f"{host_address} SSH is up ({time.time() - start_time:.1f}s)")
+            return
+        except Exception:
+            time.sleep(5)
+    print(f"Timeout waiting for {host_address} SSH ({timeout_seconds}s)")
+
+
+def wait_for_ssh_ready_after_reboot(host_address, timeout_seconds=120):
+    """
+    Wait for SSH after an in-VM reboot where we don't know if the reboot has
+    started yet. First waits for SSH to go DOWN (confirms reboot started), then
+    waits for SSH to come back UP. Do not use this for API-driven reboots/starts
+    where the OCI state machine already confirms the instance cycled — use
+    _wait_for_ssh_up directly instead to avoid a spurious 120s Phase 1 wait.
+    """
+    # Phase 1: wait for SSH to go down (confirms reboot has started)
+    print(f"{host_address} waiting for SSH to go down...")
+    start_time = time.time()
+    while time.time() < start_time + timeout_seconds:
+        try:
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(hostname=host_address, port=22, timeout=5, banner_timeout=10)
+            client.close()
+            time.sleep(2)
+        except paramiko.AuthenticationException:
+            time.sleep(2)
+        except Exception:
+            print(f"{host_address} SSH is down ({time.time() - start_time:.1f}s), waiting for recovery...")
+            break
+
+    # Phase 2: wait for SSH to come back up
+    _wait_for_ssh_up(host_address, timeout_seconds)
 
 
 def copy_file_to_host(host, local_file_path, destination_path):
